@@ -112,23 +112,23 @@ def file_one_file(filename, importers, destination, idify=False, logfile=None):
         # If no filename has been provided, use the basename.
         clean_filename = path.basename(file.name)
     elif re.match(r'\d\d\d\d-\d\d-\d\d', clean_filename):
-        logging.error("The importer '%s' file_name() method should not date the "
-                      "returned filename. Implement file_date() instead.")
+        new_filename = clean_filename
+    else:
+        # We need a simple filename; remove the directory part if there is one.
+        clean_basename = path.basename(clean_filename)
 
-    # We need a simple filename; remove the directory part if there is one.
-    clean_basename = path.basename(clean_filename)
+        # Remove whitespace if requested.
+        if idify:
+            clean_basename = misc_utils.idify(clean_basename)
 
-    # Remove whitespace if requested.
-    if idify:
-        clean_basename = misc_utils.idify(clean_basename)
+        # Prepend the date prefix.
+        new_filename = '{0:%Y-%m-%d}.{1}'.format(date, clean_basename)
 
-    # Prepend the date prefix.
-    new_filename = '{0:%Y-%m-%d}.{1}'.format(date, clean_basename)
 
     # Prepend destination directory.
     new_fullname = path.normpath(path.join(destination,
-                                           file_account.replace(account.sep, os.sep),
-                                           new_filename))
+                                        file_account.replace(account.sep, os.sep),
+                                        new_filename))
 
     # Print the filename and which modules matched.
     if logfile is not None:

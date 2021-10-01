@@ -170,6 +170,45 @@ class TestSimilarityComparator(cmptest.TestCase):
         compare(False, 'base', 'too-late')
         compare(False, 'base', 'non-accounts')
 
+class TestNaiveComparator(cmptest.TestCase):
+
+    def setUp(self):
+        self.comparator = similar.NaiveComparator()
+
+    @loader.load_doc()
+    def test_simple(self, entries, _, __):
+        """
+            plugin "beancount.plugins.auto_accounts"
+
+            2021-03-06 * "天弘基金管理有限公司"
+              meta_0: "收/支: 其他"
+              meta_1: "交易对方: 天弘基金管理有限公司"
+              meta_2: "对方账号: fun***@thfund.com.cn"
+              meta_3: "商品说明: 余额宝-单次转入"
+              meta_4: "收/付款方式: 中国建设银行储蓄卡(4492)"
+              meta_5: "交易状态: 交易成功"
+              meta_6: "交易分类: 投资理财"
+              meta_7: "交易订单号: 20210306210500100010320072259675"
+              meta_8: "商家订单号: LC2021030614383020882123564203245529"
+              meta_9: "交易时间: 2021-03-06 14:38:30"
+              Assets:Bank:CN:CCB-4492  -10000.00 CNY
+              Assets:Alipay:YuEBao      10000.00 CNY
+            
+            2021-03-06 * "支付宝-天弘基金管理有限公司"
+              meta_0: "记账日: 20210306"
+              meta_1: "交易日期: 20210306"
+              meta_2: "交易时间: 14:38:37"
+              meta_3: "账户余额: 87474.1"
+              meta_4: "币种: 人民币"
+              meta_5: "摘要: 消费"
+              meta_6: "对方账号: 105331*****0875"
+              meta_7: "对方户名: 支付宝-天弘基金管理有限公司"
+              meta_8: "交易地点: 支付宝-天弘基金管理有限公司"
+              Assets:Bank:CN:CCB-4492  -10000.00 CNY
+              Assets:Alipay:YuEBao      10000.00 CNY
+        """
+        txns = list(data.filter_txns(entries))
+        self.assertTrue(self.comparator(txns[0], txns[1]))
 
 if __name__ == '__main__':
     unittest.main()

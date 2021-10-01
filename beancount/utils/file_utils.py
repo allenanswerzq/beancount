@@ -40,6 +40,12 @@ def find_files(fords,
             logging.error("File or directory '{}' does not exist.".format(ford))
 
 
+def find_files_suffix(fords, suffix="", ignore=('')):
+    for file in find_files(fords, ignore_files=ignore):
+        if file.endswith(suffix):
+            yield file
+
+
 def guess_file_format(filename, default=None):
     """Guess the file format from the filename.
 

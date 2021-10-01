@@ -121,3 +121,26 @@ class ImporterProtocol:
           (If no date is returned, the file creation time is used. This is the
           default.)
         """
+    
+    def output_directory(self):
+       """Where to save extracted entries to."""
+    
+    def file_combined(self):
+       """A file to put this portion of extracted entries into."""
+
+    def garther_accounts(self):
+        return []
+    
+    def standalone(self):
+        return False
+
+    def convert_meta_printable(self, meta):
+        cnt = 0
+        new_meta = {}
+        for k, v in meta.items():
+            if k != "lineno" and k != "filename":
+                new_meta["meta_{}".format(cnt)] = "{}: {}".format(k, v)
+                cnt += 1
+            else:
+                new_meta[k] = v
+        return new_meta

@@ -40,6 +40,7 @@ from beancount.core import data
 from beancount.core import account
 from beancount.core import flags
 from beancount.core import convert
+from beancount.core import number
 
 
 class RealAccount(dict):
@@ -364,7 +365,7 @@ def get_postings(real_account):
     return accumulator
 
 
-def iterate_with_balance(txn_postings):
+def iterate_with_balance(txn_postings, increment_sum=False):
     """Iterate over the entries, accumulating the running balance.
 
     For each entry, this yields tuples of the form:
@@ -422,6 +423,9 @@ def iterate_with_balance(txn_postings):
         if isinstance(txn_posting, TxnPosting):
             posting = txn_posting.posting
             entry = txn_posting.txn
+            if entry.meta['filename'] == '<summarize>' and increment_sum:
+                posting = Posting(posting.account,
+                    amount.Amount(number.D(0), posting.units.currency), None, None, None, None)
         else:
             posting = None
             entry = txn_posting
@@ -683,3 +687,41 @@ def compute_postings_balance(txn_postings):
         elif isinstance(txn_posting, TxnPosting):
             final_balance.add_position(txn_posting.posting)
     return final_balance
+
+
+def remove_account_component(root, component):
+  assert isinstance(root, RealAccount)
+
+  components = account.split(root.account)
+  components.remove(component)
+  root.account = account.join(*components)
+
+  for k, v in root.items():
+    remove_account_component(v, component)
+
+
+def move_node_up(root, account_name : str):
+  assert isinstance(root, RealAccount)
+  node = get(root, account_name)
+  if node is None:
+    return
+  assert node
+
+  components = account.split(account_name)
+  remove_account_component(node, components[-2])
+
+  parent_node = get(root, components[-2])
+  parent_parent_node = root if len(components) < 3 else get(root, components[-3])
+  node_name = components[-1]
+
+  parent_node.pop(node_name)
+  parent_parent_node[node_name] = node
+
+
+def add_account_node(root, u, v, w):
+  assert isinstance(root, RealAccount)
+  if u == "":
+    vv = get_or_create(root, v)
+  else:
+    vv = get_or_create(root, u + ":" + v)
+  vv.balance = inventory.from_string(str(w) + " CNY")

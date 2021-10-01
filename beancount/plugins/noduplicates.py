@@ -8,7 +8,7 @@ from beancount.core import compare
 __plugins__ = ('validate_no_duplicates',)
 
 
-def validate_no_duplicates(entries, unused_options_map):
+def validate_no_duplicates(entries, unused_options_map, exclude_meta=True):
     """Check that the entries are unique, by computing hashes.
 
     Args:
@@ -17,5 +17,5 @@ def validate_no_duplicates(entries, unused_options_map):
     Returns:
       A list of new errors, if any were found.
     """
-    unused_hashes, errors = compare.hash_entries(entries, exclude_meta=True)
+    unused_hashes, errors = compare.hash_entries(entries, exclude_meta=exclude_meta)
     return entries, errors

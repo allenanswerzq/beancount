@@ -7,6 +7,7 @@ import builtins
 import datetime
 import enum
 import sys
+import re
 
 from decimal import Decimal
 from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple, Union
@@ -571,6 +572,17 @@ def get_entry(posting_or_entry):
 # This is the rationale for this sorting order.
 SORT_ORDER = {Open: -2, Balance: -1, Document: 1, Close: 2}
 
+def get_txn_time(meta):
+  pattern = r".+ (\d+:\d+:\d+).*"
+  for _, v in meta.items():
+      if isinstance(v, str):
+          ans = re.match(pattern, v)
+          if ans:
+              fmt = '%H:%M:%S'
+              return datetime.datetime.strptime(ans.groups()[0], fmt)
+
+  return datetime.datetime.now()
+
 
 def entry_sortkey(entry):
     """Sort-key for entries. We sort by date, except that checks
@@ -583,7 +595,7 @@ def entry_sortkey(entry):
       A tuple of (date, integer, integer), that forms the sort key for the
       entry.
     """
-    return (entry.date, SORT_ORDER.get(type(entry), 0), entry.meta["lineno"])
+    return (entry.date, SORT_ORDER.get(type(entry), 0), get_txn_time(entry.meta), entry.meta["lineno"])
 
 
 def sorted(entries):
@@ -707,3 +719,20 @@ def iter_entry_dates(entries, date_begin, date_end):
     index_end = bisect_left_with_key(entries, date_end, key=getdate)
     for index in range(index_begin, index_end):
         yield entries[index]
+
+def iter_entry_dates_index(entries, date_begin, date_end):
+    """Iterate over the entries in a date window.
+
+    Args:
+      entries: A date-sorted list of dated directives.
+      date_begin: A datetime.date instance, the first date to include.
+      date_end: A datetime.date instance, one day beyond the last date.
+    Yields:
+      Instances of the dated directives, between the dates, and in the order in
+      which they appear.
+    """
+    getdate = lambda entry: entry.date
+    index_begin = bisect_left_with_key(entries, date_begin, key=getdate)
+    index_end = bisect_left_with_key(entries, date_end, key=getdate)
+    for index in range(index_begin, index_end):
+        yield index

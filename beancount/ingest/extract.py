@@ -97,7 +97,7 @@ def find_duplicate_entries(new_entries_list, existing_entries):
       potentially with modified metadata to indicate those which are duplicated.
     """
     mod_entries_list = []
-    for key, new_entries in new_entries_list:
+    for key, new_entries, _ in new_entries_list:
         # Find similar entries against the existing ledger only.
         duplicate_pairs = similar.find_similar_entries(new_entries, existing_entries)
 
@@ -185,7 +185,7 @@ def extract(importer_config,
                     existing_entries=entries,
                     min_date=mindate,
                     allow_none_for_tags_and_links=allow_none_for_tags_and_links)
-                new_entries_list.append((filename, new_entries))
+                new_entries_list.append((filename, new_entries, importer))
             except Exception as exc:
                 logging.exception("Importer %s.extract() raised an unexpected error: %s",
                                   importer.name(), exc)
@@ -205,13 +205,13 @@ def extract(importer_config,
     assert all(isinstance(new_entries[1], list) for new_entries in new_entries_list)
 
     # Print out the results.
-    output.write(HEADER)
-    for key, new_entries in new_entries_list:
-        output.write(identify.SECTION.format(key))
-        output.write('\n')
-        if not ascending:
-            new_entries.reverse()
-        print_extracted_entries(new_entries, output)
+    # output.write(HEADER)
+    # for key, new_entries, _ in new_entries_list:
+    #     output.write(identify.SECTION.format(key))
+    #     output.write('\n')
+    #     if not ascending:
+    #         new_entries.reverse()
+    #     print_extracted_entries(new_entries, output)
 
 
 DESCRIPTION = "Extract transactions from downloads"

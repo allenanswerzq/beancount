@@ -7,6 +7,7 @@ __license__ = "GNU GPLv2"
 
 import datetime
 import collections
+import re
 
 from beancount.core.number import D
 from beancount.core.number import ZERO
@@ -14,6 +15,9 @@ from beancount.core.number import ONE
 from beancount.core import data
 from beancount.core import amount
 from beancount.core import interpolate
+from beancount.core.realization import dump
+from beancount.plugins import noduplicates
+# from beancount.ingest.extract import DUPLICATE_META
 
 
 def find_similar_entries(entries, source_entries, comparator=None, window_days=2):
@@ -149,3 +153,93 @@ def amounts_map(entry):
             key = (posting.account, currency)
             amounts[key] += posting.units.number
     return amounts
+
+
+class NaiveComparator:
+    def __init__(self) -> None:
+        pass
+
+    def get_txn_time(self, meta):
+        pattern = r".+ (\d+:\d+:\d+).*"
+        for _, val in meta.items():
+            if isinstance(val, str):
+                ans = re.match(pattern, val)
+                if ans:
+                    fmt = '%H:%M:%S'
+                    return datetime.datetime.strptime(ans.groups()[0], fmt)
+
+        return datetime.datetime.now()
+
+    def equal_post(self, post1, post2):
+        return post1.account == post2.account and post1.units == post2.units
+
+    def reverse_post(self, post1, post2):
+        return post1.account == post2.account and post1.units == -post2.units
+
+    def __call__(self, entry1, entry2):
+        assert isinstance(entry1, data.Transaction)
+        assert isinstance(entry2, data.Transaction)
+        # NOTE: entry1 is the candidate txn
+
+        if (entry1.meta['filename'] == entry2.meta['filename']):
+            # should already handled same file duplication
+            return False
+
+        DUPLICATE_META = '__duplicate__'
+        if DUPLICATE_META in entry1.meta and entry1.meta[DUPLICATE_META]:
+            return False
+
+        if entry1.date != entry2.date:
+            return False
+
+        if entry1.flag != entry2.flag or entry2.flag == "P":
+            return False
+
+        t1 = self.get_txn_time(entry1.meta.copy())
+        t2 = self.get_txn_time(entry2.meta.copy())
+        delta = t1 - t2
+        if abs(delta.seconds) > 120: return False
+
+        for post1 in entry1.postings:
+            for post2 in entry2.postings:
+                if self.equal_post(post1, post2):
+                    return True
+
+        return False
+
+
+def deduplicate_entries(entries, source_entries, comparator=None, window_days=1):
+    """Remove the obvious duplicated entries from list."""
+
+    window_head = datetime.timedelta(days=window_days)
+    window_tail = datetime.timedelta(days=window_days + 1)
+
+    if comparator is None:
+        comparator = NaiveComparator()
+
+    new_entries = []
+    for entry in entries:
+        if isinstance(entry, data.Transaction):
+            duplicated = False
+            for src in data.filter_txns(
+                    data.iter_entry_dates(source_entries,
+                                            entry.date - window_head,
+                                            entry.date + window_tail)):
+                if comparator(entry, src):
+                    # If this entry is duplicated by a existing one
+                    duplicated = True
+                    break
+
+            if not duplicated:
+                new_entries.append(entry)
+            else:
+                DUPLICATE_META = '__duplicate__'
+                marked_meta = entry.meta.copy()
+                marked_meta[DUPLICATE_META] = True
+                entry = entry._replace(meta=marked_meta)
+                entry.meta[DUPLICATE_META] = True
+                new_entries.append(entry)
+        else:
+            new_entries.append(entry)
+
+    return new_entries

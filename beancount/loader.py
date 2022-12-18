@@ -522,11 +522,47 @@ def _load(sources, log_timings, extra_validations, encoding):
         # haven't been modified by user-provided validation routines, by
         # comparing hashes before and after. Not needed for now.
 
+    entries = apply_pushed_tags(entries)
+
     # Compute the input hash.
     options_map['input_hash'] = compute_input_hash(options_map['include'])
 
     return entries, errors, options_map
 
+def apply_pushed_tags(entries):
+    tag_pair = {}
+    tag_ranges = []
+    for e in entries:
+        if isinstance(e, data.Custom):
+            if e.type == "pushtag":
+                assert len(e.values) == 1
+                t = e.values[0].value[1:]
+                assert t not in tag_pair
+                tag_pair[t] = e.date
+            elif e.type == "poptag":
+                t = e.values[0].value[1:]
+                assert len(e.values) == 1
+                assert t in tag_pair
+                tag_ranges.append((tag_pair[t], e.date, t))
+                tag_pair.pop(t)
+
+    #               |-------|
+    #         |---------------|
+    # |-------------|
+    new_entries = []
+    for e in entries:
+        if isinstance(e, data.Transaction):
+            new_tags = []
+            for r in tag_ranges:
+                cur = e.date
+                if r[0] <= cur and cur <= r[1]:
+                    new_tags.append(r[2])
+            if len(new_tags) > 0:
+                new_tags.extend(e.tags)
+                e = e._replace(tags=frozenset(new_tags))
+        new_entries.append(e)
+
+    return new_entries
 
 def run_transformations(entries, parse_errors, options_map, log_timings):
     """Run the various transformations on the entries.

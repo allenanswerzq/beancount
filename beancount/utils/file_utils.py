@@ -40,9 +40,10 @@ def find_files(fords,
             logging.error("File or directory '{}' does not exist.".format(ford))
 
 
-def find_files_suffix(fords, suffix="", ignore=('')):
-    for file in find_files(fords, ignore_files=ignore):
+def find_files_suffix(fords, suffix='', exclude=''):
+    for file in find_files(fords):
         if file.endswith(suffix):
+            if exclude in file: continue
             yield file
 
 

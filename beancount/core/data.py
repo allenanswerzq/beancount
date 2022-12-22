@@ -622,7 +622,7 @@ def posting_sortkey(entry):
     """
     if isinstance(entry, TxnPosting):
         entry = entry.txn
-    return (entry.date, SORT_ORDER.get(type(entry), 0), entry.meta["lineno"])
+    return (entry.date, SORT_ORDER.get(type(entry), 0), get_txn_time(entry.meta), entry.meta["lineno"])
 
 
 # TODO(blais): Rename 'txns' to 'transactions' for clarity.

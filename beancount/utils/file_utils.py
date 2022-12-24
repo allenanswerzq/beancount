@@ -43,7 +43,7 @@ def find_files(fords,
 def find_files_suffix(fords, suffix='', exclude=''):
     for file in find_files(fords):
         if file.endswith(suffix):
-            if exclude in file: continue
+            if len(exclude) > 0 and exclude in file: continue
             yield file
 
 
